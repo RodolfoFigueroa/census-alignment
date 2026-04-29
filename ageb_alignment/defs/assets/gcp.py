@@ -9,11 +9,20 @@ import dagster as dg
 
 @dg.op
 def get_vertices(gdf: gpd.GeoDataFrame) -> set:
+    """Build clique vertices from touching geometries.
+
+    Args:
+        gdf: GeoDataFrame with polygon geometries and a ``cvegeo`` identifier.
+
+    Returns:
+        Set of frozensets, where each frozenset is a clique with more than
+        two touching ``cvegeo`` members.
+    """
     points = gdf.sjoin(gdf, how="inner", predicate="touches")
 
     g = nx.Graph()
-    for row in points.itertuples():
-        g.add_edge(row.CVEGEO_left, row.CVEGEO_right)
+    for _, row in points.iterrows():
+        g.add_edge(row["cvegeo_left"], row["cvegeo_right"])
 
     vertices = [
         frozenset(clique) for clique in nx.enumerate_all_cliques(g) if len(clique) > 2
@@ -23,7 +32,17 @@ def get_vertices(gdf: gpd.GeoDataFrame) -> set:
 
 @dg.op
 def get_clique_geometries(gdf: gpd.GeoDataFrame, points: set) -> dict:
-    series = gdf.set_index("CVEGEO")
+    """Compute point intersections for each clique.
+
+    Args:
+        gdf: GeoDataFrame containing ``cvegeo`` and ``geometry`` columns.
+        points: Set of cliques (frozensets) to evaluate.
+
+    Returns:
+        Dictionary mapping each clique to a Shapely ``Point`` intersection.
+        Cliques with empty or non-point intersections are excluded.
+    """
+    series = gdf.set_index("cvegeo")
     series = series["geometry"]
 
     clique_geometries = {}
@@ -44,23 +63,36 @@ def get_clique_geometries(gdf: gpd.GeoDataFrame, points: set) -> dict:
 
 @dg.op(out=dg.Out(io_manager_key="points_manager"))
 def merge_columns(source: dict, target: dict) -> pd.DataFrame:
+    """Merge source and target control points into GCP table format.
+
+    Args:
+        source: Mapping of clique to source Shapely ``Point``.
+        target: Mapping of clique to target Shapely ``Point``.
+
+    Returns:
+        DataFrame containing map/source coordinates and default adjustment
+        columns, deduplicated by coordinate combinations.
+    """
     temp_source = pd.Series(source, name="source")
     temp_target = pd.Series(target, name="target")
 
-    merged = pd.concat([temp_source, temp_target], axis=1)
-    merged = merged.dropna()
-    merged["sourceX"] = merged["source"].apply(lambda x: x.coords.xy[0][0])
-    merged["sourceY"] = merged["source"].apply(lambda x: x.coords.xy[1][0])
-    merged["mapX"] = merged["target"].apply(lambda x: x.coords.xy[0][0])
-    merged["mapY"] = merged["target"].apply(lambda x: x.coords.xy[1][0])
-    merged = merged[["mapX", "mapY", "sourceX", "sourceY"]]
-    merged["enable"] = 1
-    merged["dX"] = 0
-    merged["dY"] = 0
-    merged["residual"] = 0
-    merged = merged.drop_duplicates(subset=["mapX", "mapY", "sourceX", "sourceY"])
-    merged = merged.drop_duplicates(subset=["sourceX", "sourceY"])
-    return merged.drop_duplicates(subset=["mapX", "mapY"])
+    return (
+        pd.concat([temp_source, temp_target], axis=1)
+        .dropna()
+        .assign(
+            sourceX=lambda df: df["source"].apply(lambda x: x.coords.xy[0][0]),
+            sourceY=lambda df: df["source"].apply(lambda x: x.coords.xy[1][0]),
+            mapX=lambda df: df["target"].apply(lambda x: x.coords.xy[0][0]),
+            mapY=lambda df: df["target"].apply(lambda x: x.coords.xy[1][0]),
+            enable=1,
+            dX=0,
+            dY=0,
+            residual=0,
+        )[["mapX", "mapY", "sourceX", "sourceY", "enable", "dX", "dY", "residual"]]
+        .drop_duplicates(subset=["mapX", "mapY", "sourceX", "sourceY"])
+        .drop_duplicates(subset=["sourceX", "sourceY"])
+        .drop_duplicates(subset=["mapX", "mapY"])
+    )
 
 
 def initial_gcp_factory(source_year: int, target_year: int) -> dg.AssetsDefinition:

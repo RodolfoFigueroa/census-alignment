@@ -7,20 +7,35 @@ import dagster as dg
 
 
 def remove_multipoly(df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    counts = df.explode()["CVEGEO"].value_counts()
+    """Removes multipolygons from a GeoDataFrame by exploding them into individual polygons.
+
+    Polygons that are part of a multipolygon are split into separate rows, with
+    their population (pobtot) divided equally among the parts and a letter suffix
+    appended to their cvegeo identifier (e.g., "0101001" becomes "0101001_A",
+    "0101001_B", etc.).
+
+    Args:
+        df: A GeoDataFrame containing at least "cvegeo", "pobtot", and geometry
+            columns.
+
+    Returns:
+        A GeoDataFrame where all multipolygons have been replaced by individual
+        polygon rows with adjusted cvegeo identifiers and pobtot values.
+    """
+    counts = df.explode()["cvegeo"].value_counts()
     idx = counts[counts > 1].to_dict()
 
-    nonrepeated = df[~df["CVEGEO"].isin(idx.keys())].explode()
+    nonrepeated = df[~df["cvegeo"].isin(idx.keys())].explode()
 
     repeated = []
     for cvegeo in idx:
         temp = (
-            df[df["CVEGEO"] == cvegeo]
+            df[df["cvegeo"] == cvegeo]
             .explode()
             .assign(
-                POBTOT=lambda df: df["POBTOT"] / counts[cvegeo],
+                pobtot=lambda df: df["pobtot"] / counts[cvegeo],
                 suffix=[chr(x + 65) for x in range(counts[cvegeo])],
-                CVEGEO=lambda df: df["CVEGEO"] + "_" + df["suffix"],
+                cvegeo=lambda df: df["cvegeo"] + "_" + df["suffix"],
             )
             .drop(columns=["suffix"])
         )

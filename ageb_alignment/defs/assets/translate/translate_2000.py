@@ -45,8 +45,8 @@ def translated_factory(year: int) -> dg.AssetsDefinition:
         gcp, transform_options = get_gcp_fallback(
             gcp_final_path,
             gcp_automatic,
-            context,
             year,
+            context=context,
         )
 
         options_str = generate_options_str(gcp, transform_options)
