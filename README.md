@@ -4,11 +4,17 @@
 
 This project requires an active census database produced with the [`census_processing`](https://github.com/rodolfoFigueroa/census_processing) repository.
 
-Install all dependencies with `uv`:
+Install the locked Python and Node.js dependencies:
 
 ```
 uv sync
+npm ci --omit=dev
 ```
+
+Node.js 22.23.2 is the supported runtime version. Mapshaper is installed locally
+from `package-lock.json`; asset execution never downloads packages. Set
+`MAPSHAPER_BIN` only when a deployment provides the pinned Mapshaper executable
+at a different location.
 
 Copy the example environment file:
 

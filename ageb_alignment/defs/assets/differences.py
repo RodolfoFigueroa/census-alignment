@@ -1,5 +1,5 @@
 import geopandas as gpd
-from dagster_components.partitions import zone_partitions
+from cfc_dagster_utils.partitions import zone_partitions
 
 import dagster as dg
 
@@ -9,7 +9,7 @@ def differences_factory(start_year: int, end_year: int) -> dg.AssetsDefinition:
         key=["differences", f"{start_year}_{end_year}"],
         ins={"merged": dg.AssetIn(key=["reprojected", "merged"])},
         partitions_def=zone_partitions,
-        io_manager_key="gpkg_manager",
+        io_manager_key="geodataframe_manager",
         group_name="differences",
     )
     def _asset(merged: gpd.GeoDataFrame) -> gpd.GeoDataFrame:

@@ -1,7 +1,7 @@
 import geopandas as gpd
 import pandas as pd
 import shapely
-from dagster_components.partitions import zone_partitions
+from cfc_dagster_utils.partitions import zone_partitions
 
 from dagster import AssetIn, AssetsDefinition, asset
 
@@ -51,7 +51,7 @@ def zones_extended_factory(year: int) -> AssetsDefinition:
         ins={
             "agebs": AssetIn(key=["zone_agebs", "shaped", str(year)]),
         },
-        io_manager_key="gpkg_manager",
+        io_manager_key="geodataframe_manager",
         partitions_def=zone_partitions,
         group_name="extended",
     )

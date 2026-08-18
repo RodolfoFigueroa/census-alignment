@@ -1,0 +1,6 @@
+outs:
+- md5: aad6563fa4e15bf23f73c48f3c669c71.dir
+  size: 9972931
+  nfiles: 5
+  hash: md5
+  path: '2010'

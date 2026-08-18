@@ -1,31 +1,37 @@
+import os
 from pathlib import Path
 
 import toml
-from dagster_components.resources import PostGISResource
+from cfc_dagster_utils.managers.dataframe import DataFrameFileManager
+from cfc_dagster_utils.managers.geodataframe import GeoDataFrameFileManager
+from cfc_dagster_utils.resources import PostgresResource
 
 import dagster as dg
-from ageb_alignment.defs.managers import (
-    DataFrameIOManager,
-    JSONIOManager,
-    PathIOManager,
-)
 from ageb_alignment.defs.resources import (
     AgebDictResource,
     AgebListResource,
     AgebNestedDictResource,
+    MapshaperResource,
     PathResource,
     PreferenceResource,
 )
 
 # Resources
-path_resource = PathResource(
-    data_path=dg.EnvVar("DATA_PATH"),
-    ghsl_path=dg.EnvVar("GHSL_GLOBAL_PATH"),
+project_root = Path(__file__).parents[1]
+opath = project_root / "data" / "output"
+path_resource = PathResource(out_path=str(opath))
+
+mapshaper_executable = project_root / "node_modules" / ".bin" / "mapshaper"
+if os.name == "nt":
+    mapshaper_executable = mapshaper_executable.with_suffix(".cmd")
+mapshaper_resource = MapshaperResource(
+    executable=os.getenv("MAPSHAPER_BIN", str(mapshaper_executable)),
+    expected_version="0.6.100",
 )
 
-postgis_resource = PostGISResource(
-    host="localhost",
-    port="5432",
+postgis_resource = PostgresResource(
+    host=dg.EnvVar("POSTGRES_HOST"),
+    port=dg.EnvVar("POSTGRES_PORT"),
     user=dg.EnvVar("POSTGRES_USER"),
     password=dg.EnvVar("POSTGRES_PASSWORD"),
     db=dg.EnvVar("POSTGRES_DB"),
@@ -61,40 +67,27 @@ with Path("./configs/affine.toml").open(encoding="utf8") as f:
 rigid_list = {f"ageb_{key}": value for key, value in rigid_list.items()}
 affine_resource = AgebDictResource(**rigid_list)
 
-
-# Managers
-gpkg_manager = DataFrameIOManager(path_resource=path_resource, extension=".gpkg")
-geojson_manager = DataFrameIOManager(path_resource=path_resource, extension=".geojson")
-points_manager = DataFrameIOManager(
-    path_resource=path_resource,
-    extension=".points",
-    with_index=False,
-)
-csv_manager = DataFrameIOManager(path_resource=path_resource, extension=".csv")
-json_manager = JSONIOManager(path_resource=path_resource, extension=".json")
-
-path_geojson_manager = PathIOManager(path_resource=path_resource, extension=".geojson")
-path_gpkg_manager = PathIOManager(path_resource=path_resource, extension=".gpkg")
-
-
 # Definition
 definitions = dg.Definitions.merge(
     dg.load_from_defs_folder(project_root=Path(__file__).parent.parent),
     dg.Definitions(
         resources={
             "path_resource": path_resource,
+            "mapshaper_resource": mapshaper_resource,
+            "geodataframe_manager": GeoDataFrameFileManager(
+                path_resource=path_resource, extension=".geoparquet"
+            ),
+            "geodataframe_geojson_manager": GeoDataFrameFileManager(
+                path_resource=path_resource, extension=".geojson"
+            ),
+            "points_manager": DataFrameFileManager(
+                path_resource=path_resource, extension=".points", engine="csv"
+            ),
             "overlap_resource": overlap_resource,
             "preference_resource": preference_resource,
             "remove_from_mun_resource": remove_from_mun_resource,
             "affine_resource": affine_resource,
             "switch_resource": switch_resource,
-            "gpkg_manager": gpkg_manager,
-            "geojson_manager": geojson_manager,
-            "points_manager": points_manager,
-            "path_geojson_manager": path_geojson_manager,
-            "path_gpkg_manager": path_gpkg_manager,
-            "csv_manager": csv_manager,
-            "json_manager": json_manager,
             "postgis_resource": postgis_resource,
         },
     ),

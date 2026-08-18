@@ -2,7 +2,7 @@ from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
-from dagster_components.partitions import zone_partitions
+from cfc_dagster_utils.partitions import zone_partitions
 
 import dagster as dg
 from ageb_alignment.defs.assets.translate.common import (
@@ -19,12 +19,12 @@ def translated_factory(year: int) -> dg.AssetsDefinition:
         ins={
             "ageb_path": dg.AssetIn(
                 ["zone_agebs", "shaped", str(year)],
-                input_manager_key="path_gpkg_manager",
+                input_manager_key="geodataframe_manager",
             ),
             "gcp_automatic": dg.AssetIn(key=["gcp", str(year)]),
         },
         partitions_def=zone_partitions,
-        io_manager_key="gpkg_manager",
+        io_manager_key="geodataframe_manager",
         group_name="translated",
     )
     def _asset(
@@ -36,7 +36,7 @@ def translated_factory(year: int) -> dg.AssetsDefinition:
         zone = context.partition_key
 
         gcp_final_path = (
-            Path(path_resource.data_path)
+            Path(path_resource.out_path)
             / "intermediate"
             / "gcp"
             / str(year)

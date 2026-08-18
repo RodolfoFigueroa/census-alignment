@@ -1,6 +1,6 @@
 import geopandas as gpd
 import pandas as pd
-from dagster_components.partitions import zone_partitions
+from cfc_dagster_utils.partitions import zone_partitions
 
 import dagster as dg
 from ageb_alignment.defs.resources import AgebDictResource
@@ -15,7 +15,7 @@ def zones_switched_factory(year: int) -> dg.AssetsDefinition:
                 partition_mapping=dg.AllPartitionMapping(),
             ),
         },
-        io_manager_key="geojson_manager",
+        io_manager_key="geodataframe_geojson_manager",
         partitions_def=zone_partitions,
         group_name="switched",
     )
@@ -23,7 +23,7 @@ def zones_switched_factory(year: int) -> dg.AssetsDefinition:
         context: dg.AssetExecutionContext,
         switch_resource: AgebDictResource,
         all_agebs: dict[str, gpd.GeoDataFrame],
-    ):
+    ) -> gpd.GeoDataFrame:
         zone = context.partition_key
         agebs = all_agebs[zone]
         switches: dict = getattr(switch_resource, f"ageb_{year}")

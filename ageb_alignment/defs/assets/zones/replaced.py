@@ -1,6 +1,9 @@
+import functools
+import operator
+
 import geopandas as gpd
 import numpy as np
-from dagster_components.partitions import zone_partitions
+from cfc_dagster_utils.partitions import zone_partitions
 
 from ageb_alignment.configs.replacement import (
     replace_1990_2000,
@@ -14,7 +17,8 @@ def replace_geoms(
     gdf_old: gpd.GeoDataFrame,
     gdf_new: gpd.GeoDataFrame,
     replace_list: list,
-    check_complete=False,
+    *,
+    check_complete: bool = False,
 ) -> gpd.GeoDataFrame:
     """Replaces geometries in old with the union of geometries in new following the
     corresponding relations in replace_list."""
@@ -28,13 +32,23 @@ def replace_geoms(
             old_idx.append(oi)
         else:
             old_idx += oi
-    if check_complete:
-        assert np.all(sorted(old_idx) == sorted(gdf_old.index))
+    if check_complete and np.all(sorted(old_idx) != sorted(gdf_old.index)):
+        err = (
+            "Replacement list does not cover all geometries in gdf_old. "
+            "This may result in unexpected behavior."
+        )
+        raise ValueError(err)
 
     # Check targets are unique
     targets = [tl for _, tl in replace_list]
-    targets_flat = sum(targets, [])
-    assert len(np.unique(targets_flat)) == len(targets_flat)
+    targets_flat = functools.reduce(operator.iadd, targets, [])
+
+    if len(np.unique(targets_flat)) != len(targets_flat):
+        err = (
+            "Targets in replace_list are not unique. "
+            "This may result in unexpected behavior."
+        )
+        raise ValueError(err)
 
     for old_id, new_ids in replace_list:
         if isinstance(old_id, str):
@@ -45,7 +59,7 @@ def replace_geoms(
             ].union_all()
         elif isinstance(old_id, list):
             # This is many to one relation or many to many
-            pobsum = gdf_old.loc[old_id, "POBTOT"].sum()
+            pobsum = gdf_old.loc[old_id, "pobtot"].sum()
             gdf_old = gdf_old.drop(old_id)
             new_geom = gdf_new.loc[new_ids, "geometry"].union_all()
             gdf_old.loc["+".join(old_id)] = [pobsum, new_geom]
@@ -62,7 +76,7 @@ def replace_geoms(
         "agebs_new": AssetIn(["zone_agebs", "initial", "2010"]),
     },
     partitions_def=zone_partitions,
-    io_manager_key="geojson_manager",
+    io_manager_key="geodataframe_geojson_manager",
     group_name="replaced",
 )
 def zones_replaced_2000(
@@ -94,7 +108,7 @@ def zones_replaced_2000(
         "agebs_2010": AssetIn(["zone_agebs", "initial", "2010"]),
     },
     partitions_def=zone_partitions,
-    io_manager_key="geojson_manager",
+    io_manager_key="geodataframe_geojson_manager",
     group_name="replaced",
 )
 def zones_replaced_1990(

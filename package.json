@@ -1,6 +1,7 @@
 {
   "name": "ageb-alignment",
   "version": "1.0.0",
+  "private": true,
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -16,7 +17,10 @@
     "url": "https://github.com/CentroFuturoCiudades/ageb-alignment/issues"
   },
   "homepage": "https://github.com/CentroFuturoCiudades/ageb-alignment#readme",
+  "engines": {
+    "node": "22.23.2"
+  },
   "dependencies": {
-    "mapshaper": "^0.6.100"
+    "mapshaper": "0.6.100"
   }
 }

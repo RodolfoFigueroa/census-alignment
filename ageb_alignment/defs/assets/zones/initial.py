@@ -1,13 +1,15 @@
 import geopandas as gpd
 import pandas as pd
-from dagster_components.partitions import zone_partitions
-from dagster_components.resources import PostGISResource
+from cfc_dagster_utils.partitions import zone_partitions
+from cfc_dagster_utils.resources import PostgresResource
 
 import dagster as dg
 
 
 def remove_multipoly(df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """Removes multipolygons from a GeoDataFrame by exploding them into individual polygons.
+    """
+    Removes multipolygons from a GeoDataFrame by exploding them into individual
+    polygons.
 
     Polygons that are part of a multipolygon are split into separate rows, with
     their population (pobtot) divided equally among the parts and a letter suffix
@@ -33,41 +35,47 @@ def remove_multipoly(df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             df[df["cvegeo"] == cvegeo]
             .explode()
             .assign(
-                pobtot=lambda df: df["pobtot"] / counts[cvegeo],
-                suffix=[chr(x + 65) for x in range(counts[cvegeo])],
+                pobtot=lambda df: df["pobtot"] / counts[cvegeo],  # noqa: B023  # ty: ignore[invalid-argument-type]
+                suffix=[chr(x + 65) for x in range(counts[cvegeo])],  # ty: ignore[invalid-argument-type]
                 cvegeo=lambda df: df["cvegeo"] + "_" + df["suffix"],
             )
             .drop(columns=["suffix"])
         )
         repeated.append(temp)
 
-    return gpd.GeoDataFrame(pd.concat([nonrepeated] + repeated, ignore_index=True))
+    return gpd.GeoDataFrame(pd.concat([nonrepeated, *repeated], ignore_index=True))
 
 
 def zone_agebs_factory(year: int) -> dg.AssetsDefinition:
     @dg.asset(
         key=["zone_agebs", "initial", str(year)],
         partitions_def=zone_partitions,
-        io_manager_key="geojson_manager",
+        io_manager_key="geodataframe_geojson_manager",
         group_name="initial",
     )
     def _asset(
         context: dg.AssetExecutionContext,
-        postgis_resource: PostGISResource,
+        postgis_resource: PostgresResource,
     ) -> gpd.GeoDataFrame:
         if year == 2020:
             query = """
-                SELECT census_2020_ageb."CVEGEO", census_2020_ageb."POBTOT", census_2020_ageb."geometry"
-                    FROM census_2020_ageb
+                SELECT
+                    census_2020_ageb.cvegeo,
+                    census_2020_ageb.pobtot,
+                    census_2020_ageb.geometry
+                FROM census_2020_ageb
                 INNER JOIN census_2020_mun
-                    ON census_2020_ageb."CVE_MUN" = census_2020_mun."CVEGEO"
-                WHERE census_2020_mun."CVE_MET" = %(met_zone)s
+                    ON census_2020_ageb.cve_mun = census_2020_mun.cvegeo
+                WHERE census_2020_mun.cve_met = %(met_zone)s
                 """
         else:
             query = f"""
-                SELECT census_{year}_ageb."CVEGEO", census_{year}_ageb."POBTOT", census_{year}_ageb."geometry"
-                    FROM census_{year}_ageb
-                WHERE census_{year}_ageb."CVE_MET" = %(met_zone)s
+                SELECT
+                    census_{year}_ageb.cvegeo,
+                    census_{year}_ageb.pobtot,
+                    census_{year}_ageb.geometry
+                FROM census_{year}_ageb
+                WHERE census_{year}_ageb.cve_met = %(met_zone)s
                 """  # noqa: S608 TODO: Parameterize the year in the table name
 
         with postgis_resource.connect() as conn:

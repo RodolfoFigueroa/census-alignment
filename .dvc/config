@@ -1,0 +1,5 @@
+[core]
+    remote = azure_remote
+    autostage = true
+['remote "azure_remote"']
+    url = azure://ageb-alignment

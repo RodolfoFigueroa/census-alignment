@@ -1,5 +1,5 @@
 import geopandas as gpd
-from dagster_components.partitions import zone_partitions
+from cfc_dagster_utils.partitions import zone_partitions
 
 import dagster as dg
 
@@ -11,7 +11,7 @@ import dagster as dg
         for year in (1990, 2000, 2010, 2020)
     },
     partitions_def=zone_partitions,
-    io_manager_key="gpkg_manager",
+    io_manager_key="geodataframe_manager",
     group_name="reprojected_merged",
 )
 def merge_meshes(
@@ -23,7 +23,6 @@ def merge_meshes(
     merged = agebs_1990.rename(
         columns={
             "pop_fraction": "pop_fraction_1990",
-            # "P_12YMAS_fraction": "P_12YMAS_fraction_1990",
             "geometry": "geometry_1990",
         },
     )
@@ -37,13 +36,11 @@ def merge_meshes(
             [
                 "codigo",
                 "pop_fraction",
-                # "P_12YMAS_fraction",
                 "geometry",
             ]
         ].rename(
             columns={
                 "pop_fraction": f"pop_fraction_{year}",
-                # "P_12YMAS_fraction": f"P_12YMAS_fraction_{year}",
                 "geometry": f"geometry_{year}",
             },
         )

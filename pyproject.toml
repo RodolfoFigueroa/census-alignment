@@ -7,10 +7,10 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "contextily>=1.7.0",
     "dagster>=1.12.14",
-    "dagster-components",
+    "cfc-dagster-utils>=0.4.1",
     "dagster-dg-cli>=1.12.14",
     "dagster-webserver>=1.12.14",
-    "gdal",
+    "gdal>=3.13.2",
     "geopandas>=1.1.2",
     "networkx>=3.6.1",
     "numpy<2",
@@ -21,6 +21,7 @@ dependencies = [
     "shapely>=2.1.2",
     "sqlalchemy>=2.0.46",
     "toml>=0.10.2",
+    "pyarrow>=25.0.0",
 ]
 
 [tool.dg]
@@ -31,14 +32,22 @@ root_module = "ageb_alignment"
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["D", "PLR2004", "PLR0913", "COM812", "ANN401"]
+ignore = ["D", "PLR2004", "CPY001", "COM812"]
 
 [tool.uv.sources]
-gdal = { url = "https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.2.18/GDAL-3.8.4-cp312-cp312-win_amd64.whl", marker = "sys_platform == 'win32'" }
-dagster-components = { git = "https://github.com/RodolfoFigueroa/dagster_components" }
+# gdal = { url = "https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.2.18/GDAL-3.8.4-cp312-cp312-win_amd64.whl", marker = "sys_platform == 'win32'" }
+cfc-dagster-utils = { git = "https://github.com/RodolfoFigueroa/cfc-dagster-utils" }
 
 [dependency-groups]
 dev = [
+    "dvc[azure]>=3.67.1",
     "ipykernel<7",
+    "pandas-stubs>=3.0.5.260730",
     "pre-commit>=4.5.1",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.1",
+    "seaborn>=0.13.2",
+    "ty>=0.0.68",
+    "types-geopandas>=1.1.4.20260728",
 ]

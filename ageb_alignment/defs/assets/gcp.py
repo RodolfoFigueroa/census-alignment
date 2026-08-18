@@ -2,7 +2,7 @@ import geopandas as gpd
 import networkx as nx
 import pandas as pd
 import shapely
-from dagster_components.partitions import zone_partitions
+from cfc_dagster_utils.partitions import zone_partitions
 
 import dagster as dg
 
