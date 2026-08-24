@@ -32,7 +32,7 @@ root_module = "ageb_alignment"
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["D", "PLR2004", "CPY001", "COM812"]
+ignore = ["D", "PLR2004", "CPY001", "COM812", "PD010"]
 
 [tool.uv.sources]
 # gdal = { url = "https://github.com/cgohlke/geospatial-wheels/releases/download/v2024.2.18/GDAL-3.8.4-cp312-cp312-win_amd64.whl", marker = "sys_platform == 'win32'" }
